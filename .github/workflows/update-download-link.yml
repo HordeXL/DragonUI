@@ -1,0 +1,31 @@
+name: Update download link
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit: a moved tag must not change what runs with write access.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+
+      - name: Point the README at the new ZIP
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: python3 .github/update_download_link.py
+
+      - name: Commit the change
+        run: |
+          git diff --quiet -- README.md && exit 0
+          [ "$(git diff --numstat -- README.md | cut -f1,2)" = "$(printf '1\t1')" ]
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "docs(readme): download button points to the latest release" -- README.md
+          git push -q origin main
